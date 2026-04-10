@@ -380,7 +380,7 @@ stopBtn.onclick = stopSession;
 let dataWindow = [], graphValues = [], peakTimes = [], lastStepTime = 0, lastImpactTime = 0, mode = "-";
 let speedSum = 0, speedCount = 0, totalDistance = 0, sessionStart = null, lastSampleTimestamp = null;
 let modeTimes = { lent: 0, moyen: 0, rapide: 0 };
-const THRESHOLD_LENT = 30.0, THRESHOLD_RAPIDE = 55.0, THRESHOLD_IMPACT = 85.0;
+const THRESHOLD_LENT = 30.0, THRESHOLD_RAPIDE = 50.0, THRESHOLD_IMPACT = 90.0;
 
 function handleMotion(event) {
     if (!running) return;
