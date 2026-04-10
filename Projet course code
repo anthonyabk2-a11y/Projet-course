@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Coach de course local</title>
+<style>
+:root {
+  --bg: #020617;
+  --card: rgba(15, 23, 42, 0.65);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --blue: #3b82f6;
+  --cyan: #06b6d4;
+  --green: #10b981;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --spotify: #1ed760;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  background: radial-gradient(circle at top right, #1e1b4b, #020617);
+  background-attachment: fixed;
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+.wrap { max-width: 500px; margin: 0 auto; padding: 30px 20px; }
+
+h1 {
+  margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px;
+  background: linear-gradient(to right, #fff, var(--cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.sub { margin: 4px 0 24px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+
+.card {
+  background: var(--card); backdrop-filter: blur(16px);
+  border: 1px solid var(--border); border-radius: 24px;
+  padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+button {
+  border: none; border-radius: 16px; padding: 16px 20px; font-size: 14px; font-weight: 800;
+  color: white; background: #1e293b; cursor: pointer; flex: 1;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+button:active { transform: scale(0.96); }
+#permissionBtn { background: linear-gradient(135deg, #475569, #1e293b); }
+#startBtn { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
+.danger { background: linear-gradient(135deg, var(--red), #b91c1c) !important; }
+#openSpotifyBtn { background: var(--spotify); color: #000; width: 100%; font-weight: 900; }
+button:disabled { opacity: 0.3; filter: grayscale(1); }
+
+.mode-btn { background: #0f172a; color: var(--muted); font-size: 11px; padding: 12px 6px; flex: 1; text-align: center; }
+.mode-btn.active { background: var(--blue); color: #fff; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+
+.pill { display: inline-block; padding: 6px 14px; border-radius: 10px; font-weight: 800; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
+.lent { color: var(--green); border-color: var(--green); }
+.moyen { color: var(--orange); border-color: var(--orange); }
+.rapide { color: var(--red); border-color: var(--red); }
+.impact { background: var(--red); color: white; animation: pulse 0.5s infinite; }
+
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.kpi { background: rgba(0, 0, 0, 0.2); border-radius: 18px; padding: 16px; }
+.label { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.value { font-size: 26px; font-weight: 800; font-family: 'Monaco', monospace; color: #fff; }
+
+canvas { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.4); border-radius: 18px; margin-top: 15px; }
+
+#micIndicator {
+  display: none; width: 12px; height: 12px; background: var(--red); border-radius: 50%;
+  position: absolute; top: 15px; right: 15px; box-shadow: 0 0 10px var(--red);
+  animation: blink 1s infinite;
+}
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+#spotifyModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100000; padding: 20px; }
+.modal-content { background: #121212; width: 100%; max-width: 400px; padding: 15px; border-radius: 28px; border: 1px solid rgba(30, 215, 96, 0.3); }
+#closeModalBtn { background: #282828; margin-top: 15px; width: 100%; font-size: 12px; padding: 12px; }
+
+#pocketOverlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: #000; z-index: 99999; display: none;
+  flex-direction: column; justify-content: center; align-items: center;
+}
+</style>
+</head>
+<body>
+
+<div id="spotifyModal">
+    <div class="modal-content">
+        <div style="color:var(--spotify); font-weight:900; margin-bottom:15px; font-size:14px; text-transform:uppercase; letter-spacing:1px; text-align:center;">Lecteur Spotify</div>
+        <iframe id="spotifyIframe" src="" width="100%" height="352" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px; background:#000;"></iframe>
+        <button id="closeModalBtn">RETOUR AU COACH</button>
+    </div>
+</div>
+
+<div id="pocketOverlay">
+  <div style="color: var(--blue); font-weight: 900; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px;">SESSION EN COURS</div>
+  <button id="exitPocketBtn" style="background: transparent; border: 2px solid var(--red); color: var(--red); padding: 15px 30px; border-radius: 50px; font-weight: 900;">QUITTER & ARRÊTER</button>
+</div>
+
+<div class="wrap">
+<h1>Coach de course</h1>
+<p class="sub">Vitesse & Coaching Vocal</p>
+
+<section class="card">
+    <button id="openSpotifyBtn">🎵 OUVRIR LE LECTEUR</button>
+</section>
+
+<section class="card" style="position: relative;">
+<div id="micIndicator"></div>
+<div class="row">
+<button id="permissionBtn">Activer les capteurs</button>
+<button id="startBtn" disabled>Démarrer</button>
+<button id="stopBtn" class="danger" disabled>Arrêter</button>
+</div>
+<p id="statusText" style="text-align:center; color:var(--cyan); margin-top:12px;">En attente</p>
+</section>
+
+<section class="card">
+<h3 style="font-size:14px; margin-top:0; color:var(--muted);">Objectif de séance</h3>
+<div class="row" style="gap: 8px;">
+    <button id="btnLibre" class="mode-btn active">Libre</button>
+    <button id="btnLent" class="mode-btn">Lent</button>
+    <button id="btnMoyen" class="mode-btn">Moyen</button>
+    <button id="btnRapide" class="mode-btn">Rapide</button>
+</div>
+<p id="targetModeText" style="text-align:center; font-size:12px; margin-top:10px; color:var(--cyan);">Course libre</p>
+</section>
+
+<section class="card">
+<div class="row" style="justify-content:space-between;">
+<div><div class="label">Mode actuel</div><div id="modeBadge" class="pill">-</div></div>
+<div><div class="label">Alerte impact</div><div id="impactBadge" class="pill">Aucune</div></div>
+</div>
+<div class="grid" style="margin-top:14px;">
+<div class="kpi"><div class="label">Vitesse (km/h)</div><div class="value" id="speedValue">0.0</div></div>
+<div class="kpi"><div class="label">Cadence (pas/min)</div><div class="value" id="cadenceValue">0</div></div>
+<div class="kpi"><div class="label">Total pas</div><div class="value" id="stepCountValue">0</div></div>
+<div class="kpi"><div class="label">Impacts</div><div class="value" id="impactCountValue">0</div></div>
+</div>
+<canvas id="graph" width="700" height="180"></canvas>
+</section>
+
+<section class="card">
+  <h3 style="font-size:14px; margin-top:0; color:var(--muted);">Volume du Coach</h3>
+  <div style="display: flex; align-items: center; gap: 15px;">
+    <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" style="flex: 1; accent-color: var(--blue);">
+    <span id="volumeValue" style="font-family: monospace; width: 45px; text-align: right; font-weight: 800;">100%</span>
+  </div>
+</section>
+
+<section class="card">
+<h3 style="font-size:14px; margin-top:0; color:var(--muted);">Résumé Live</h3>
+<div class="grid">
+<div class="kpi"><div class="label">Durée</div><div class="value" id="summaryDuration">0.0s</div></div>
+<div class="kpi"><div class="label">Distance (km)</div><div class="value" id="summaryDistance">0.00</div></div>
+<div class="kpi"><div class="label">Vitesse Moy.</div><div class="value" id="summaryAvgSpeed">0.0</div></div>
+<div class="kpi"><div class="label">Lent</div><div class="value" id="summaryLent">0.0s</div></div>
+<div class="kpi"><div class="label">Moyen</div><div class="value" id="summaryMoyen">0.0s</div></div>
+<div class="kpi"><div class="label">Rapide</div><div class="value" id="summaryRapide">0.0s</div></div>
+<div class="kpi" style="grid-column: span 2;"><div class="label">Note séance</div><div class="value" id="summaryGrade">-</div></div>
+</div>
+</section>
+</div>
+
+<script>
+// --- INITIALISATION VOCALE ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+const micIndicator = document.getElementById("micIndicator");
+
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.onstart = () => { micIndicator.style.display = 'block'; };
+    recognition.onend = () => { micIndicator.style.display = 'none'; if (vocalUnlocked && running) recognition.start(); };
+    recognition.onresult = (event) => {
+        const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
+        if (command.includes("libre")) { updateTargetMenu(null); speak("Mode libre."); }
+        else if (command.includes("lent") || command.includes("long")) { updateTargetMenu("lent"); speak("Mode lent."); }
+        else if (command.includes("moyen")) { updateTargetMenu("moyen"); speak("Mode moyen."); }
+        else if (command.includes("rapide")) { updateTargetMenu("rapide"); speak("Mode rapide."); }
+    };
+}
+
+// --- GESTION DU MODE POCHE ---
+const pocketOverlay = document.getElementById("pocketOverlay");
+const exitPocketBtn = document.getElementById("exitPocketBtn");
+
+// Quand on quitte le mode poche, on arrête la session !
+exitPocketBtn.onclick = () => { 
+    stopSession(); 
+};
+
+const playlistLinks = {
+    libre:  "https://open.spotify.com/embed/playlist/37i9dQZF1DXadO2fU7S90n",
+    lent:   "https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8OIskuS",
+    moyen:  "https://open.spotify.com/embed/playlist/37i9dQZF1DX837uYAs6fML",
+    rapide: "https://open.spotify.com/embed/playlist/37i9dQZF1DX70XpS6btRrR"
+};
+
+const synth = window.speechSynthesis;
+let vocalUnlocked = false;
+let targetMode = null;
+let running = false;
+let coachVolume = 1.0;
+
+const btnLibre = document.getElementById("btnLibre");
+const btnLent = document.getElementById("btnLent");
+const btnMoyen = document.getElementById("btnMoyen");
+const btnRapide = document.getElementById("btnRapide");
+const targetModeText = document.getElementById("targetModeText");
+const openSpotifyBtn = document.getElementById("openSpotifyBtn");
+const spotifyModal = document.getElementById("spotifyModal");
+const spotifyIframe = document.getElementById("spotifyIframe");
+const closeModalBtn = document.getElementById("closeModalBtn");
+const volumeSlider = document.getElementById("volumeSlider");
+const volumeValue = document.getElementById("volumeValue");
+
+volumeSlider.oninput = () => {
+    coachVolume = volumeSlider.value;
+    volumeValue.textContent = Math.round(coachVolume * 100) + "%";
+};
+
+function chargerMusique() {
+    const key = targetMode || 'libre';
+    spotifyIframe.src = playlistLinks[key];
+}
+
+function updateTargetMenu(m) {
+    targetMode = m;
+    [btnLibre, btnLent, btnMoyen, btnRapide].forEach(b => b.classList.remove("active"));
+    if (m === null) { 
+        btnLibre.classList.add("active"); targetModeText.textContent = "Course libre"; 
+    } else {
+        const activeBtn = document.getElementById("btn" + m.charAt(0).toUpperCase() + m.slice(1));
+        if(activeBtn) activeBtn.classList.add("active");
+        targetModeText.textContent = "Objectif : " + m.charAt(0).toUpperCase() + m.slice(1);
+    }
+}
+
+btnLibre.onclick = () => { updateTargetMenu(null); speak("Mode libre."); };
+btnLent.onclick = () => { updateTargetMenu("lent"); speak("Lent."); };
+btnMoyen.onclick = () => { updateTargetMenu("moyen"); speak("Moyen."); };
+btnRapide.onclick = () => { updateTargetMenu("rapide"); speak("Rapide."); };
+
+openSpotifyBtn.onclick = () => { chargerMusique(); spotifyModal.style.display = "flex"; };
+closeModalBtn.onclick = () => { spotifyModal.style.display = "none"; };
+
+function speak(t) {
+    if (!vocalUnlocked) return;
+    if (synth.speaking) synth.cancel();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = 'fr-FR'; u.rate = 1.1; u.volume = coachVolume;
+    synth.speak(u);
+}
+
+const permissionBtn = document.getElementById("permissionBtn");
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const statusText = document.getElementById("statusText");
+const modeBadge = document.getElementById("modeBadge");
+const impactBadge = document.getElementById("impactBadge");
+const speedValue = document.getElementById("speedValue");
+const cadenceValue = document.getElementById("cadenceValue");
+const stepCountValue = document.getElementById("stepCountValue");
+const impactCountValue = document.getElementById("impactCountValue");
+
+const summaryDuration = document.getElementById("summaryDuration");
+const summaryDistance = document.getElementById("summaryDistance");
+const summaryLent = document.getElementById("summaryLent");
+const summaryMoyen = document.getElementById("summaryMoyen");
+const summaryRapide = document.getElementById("summaryRapide");
+const summaryAvgSpeed = document.getElementById("summaryAvgSpeed");
+const summaryGrade = document.getElementById("summaryGrade");
+
+const canvas = document.getElementById("graph");
+const ctx = canvas.getContext("2d");
+
+let dataWindow = [], graphValues = [], peakTimes = [], totalSteps = 0, lastStepTime = 0, lastImpactTime = 0;
+let mode = "-", sessionStart = null, lastSampleTimestamp = null, impactCount = 0;
+let modeTimes = { lent: 0, moyen: 0, rapide: 0 };
+let totalDistance = 0, speedSum = 0, speedCount = 0, lastEncouragedMode = null;
+
+const THRESHOLD_LENT = 30.0, THRESHOLD_RAPIDE = 55.0, THRESHOLD_IMPACT = 85.0;
+
+function setModeBadge(nm) { modeBadge.textContent = nm; modeBadge.className = "pill " + nm; }
+
+function handleMotion(event) {
+    if (!running) return;
+    const now = Date.now();
+    const raw = event.acceleration || event.accelerationIncludingGravity;
+    if (!raw) return;
+    const dyn = Math.sqrt((raw.x||0)**2 + (raw.y||0)**2 + (raw.z||0)**2);
+
+    dataWindow.push({ t: now, value: dyn });
+    while (dataWindow.length && (now - dataWindow[0].t > 1500)) dataWindow.shift();
+    graphValues.push({ t: now, value: dyn });
+    while (graphValues.length > 120) graphValues.shift();
+
+    const sorted = [...dataWindow.map(v => v.value)].sort((a,b)=>a-b);
+    const p95 = sorted.length ? sorted[Math.floor(0.95 * (sorted.length - 1))] : 0;
+    
+    const currentKmH = Math.max(0, (p95 / 5)).toFixed(1);
+    speedValue.textContent = currentKmH;
+
+    let nm = p95 < THRESHOLD_LENT ? "lent" : (p95 < THRESHOLD_RAPIDE ? "moyen" : "rapide");
+    if (nm !== mode) { mode = nm; setModeBadge(mode); }
+
+    if (dyn > 20.0 && now - lastStepTime > 250) { totalSteps++; lastStepTime = now; peakTimes.push(now); }
+    if (dyn > THRESHOLD_IMPACT && now - lastImpactTime > 800) {
+        impactCount++; impactCountValue.textContent = impactCount;
+        impactBadge.textContent = "Impact !"; impactBadge.className = "pill impact";
+        speak("Impact."); lastImpactTime = now;
+        setTimeout(() => { if (running) { impactBadge.textContent = "Aucune"; impactBadge.className = "pill"; } }, 700);
+    }
+    
+    if (lastSampleTimestamp) {
+        const dt = (now - lastSampleTimestamp) / 1000;
+        if (mode === "lent") modeTimes.lent += dt;
+        else if (mode === "moyen") modeTimes.moyen += dt;
+        else if (mode === "rapide") modeTimes.rapide += dt;
+        totalDistance += (parseFloat(currentKmH) / 3600) * dt;
+        speedSum += parseFloat(currentKmH);
+        speedCount++;
+    }
+    lastSampleTimestamp = now;
+
+    stepCountValue.textContent = totalSteps;
+    const recent = peakTimes.filter(t => now - t <= 10000);
+    cadenceValue.textContent = recent.length < 2 ? 0 : Math.round(((recent.length-1)/((recent[recent.length-1]-recent[0])/1000))*60);
+
+    const dur = (now - sessionStart) / 1000;
+    summaryDuration.textContent = dur.toFixed(1) + "s";
+    summaryDistance.textContent = totalDistance.toFixed(2);
+    summaryLent.textContent = modeTimes.lent.toFixed(1) + "s";
+    summaryMoyen.textContent = modeTimes.moyen.toFixed(1) + "s";
+    summaryRapide.textContent = modeTimes.rapide.toFixed(1) + "s";
+    summaryAvgSpeed.textContent = speedCount > 0 ? (speedSum / speedCount).toFixed(1) : "0.0";
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const maxY = 95;
+    function dl(v, c) {
+        const y = canvas.height - (v / maxY) * canvas.height;
+        ctx.strokeStyle = c; ctx.setLineDash([5, 5]); ctx.beginPath();
+        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); ctx.setLineDash([]);
+    }
+    dl(THRESHOLD_LENT, "#10b981"); dl(THRESHOLD_RAPIDE, "#f59e0b"); dl(THRESHOLD_IMPACT, "#ef4444");
+
+    ctx.strokeStyle="#38bdf8"; ctx.lineWidth=2; ctx.beginPath();
+    graphValues.forEach((p,i)=>{
+        const x=(i/119)*canvas.width; const y=canvas.height-(p.value/maxY)*canvas.height;
+        if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+}
+
+setInterval(() => {
+    if (!running || !targetMode) return;
+    if (mode === targetMode) {
+        if (lastEncouragedMode !== mode) { speak("Continue."); lastEncouragedMode = mode; }
+    } else {
+        lastEncouragedMode = null;
+        if (targetMode === 'rapide' && mode !== 'rapide') speak("Accélère.");
+        else if (targetMode === 'lent' && mode !== 'lent') speak("Ralentis.");
+        else if (targetMode === 'moyen' && mode === 'lent') speak("Plus vite.");
+        else if (targetMode === 'moyen' && mode === 'rapide') speak("Ralentis.");
+    }
+}, 4000);
+
+permissionBtn.onclick = async () => {
+    try {
+        if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+            const res = await DeviceMotionEvent.requestPermission();
+            if (res !== "granted") return;
+        }
+        if (!vocalUnlocked) { synth.speak(new SpeechSynthesisUtterance("")); vocalUnlocked = true; }
+        if (recognition) { try { recognition.start(); } catch(e){} }
+        
+        statusText.textContent = "Capteurs & Micro OK"; startBtn.disabled = false;
+    } catch (e) { alert("HTTPS requis."); }
+};
+
+function startSession() {
+    running = true; sessionStart = Date.now(); lastSampleTimestamp = Date.now();
+    totalSteps = 0; impactCount = 0; modeTimes = { lent: 0, moyen: 0, rapide: 0 };
+    totalDistance = 0; speedSum = 0; speedCount = 0;
+    
+    // --- Nouveauté : Activation AUTO du mode poche ---
+    pocketOverlay.style.display = 'flex'; 
+    
+    summaryGrade.textContent = "-";
+    speak("C'est parti. Mode poche activé.");
+    window.addEventListener("devicemotion", handleMotion);
+    statusText.textContent = "En cours"; startBtn.disabled = true; stopBtn.disabled = false;
+}
+
+function stopSession() {
+    running = false; window.removeEventListener("devicemotion", handleMotion);
+    
+    // Fermeture de l'overlay poche
+    pocketOverlay.style.display = 'none';
+    
+    if(recognition) recognition.stop();
+    const dur = (Date.now() - sessionStart) / 1000;
+    if (targetMode && dur > 0) {
+        const pct = Math.round((modeTimes[targetMode] / dur) * 100);
+        let g = pct >= 80 ? "A" : (pct >= 70 ? "B" : (pct >= 60 ? "C" : "D"));
+        summaryGrade.textContent = g + " (" + pct + "%)";
+        speak("Note finale " + g + ".");
+    } else { speak("Séance terminée."); }
+    statusText.textContent = "Terminé"; stopBtn.disabled = true; startBtn.disabled = false;
+}
+
+startBtn.onclick = startSession;
+stopBtn.onclick = stopSession;
+</script>
+</body>
+</html>
