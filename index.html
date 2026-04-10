@@ -60,16 +60,16 @@ button:active { transform: scale(0.96); }
 #permissionBtn { background: linear-gradient(135deg, #475569, #1e293b); }
 #startBtn { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
 .danger { background: linear-gradient(135deg, var(--red), #b91c1c) !important; }
-#openSpotifyBtn { background: var(--spotify); color: #000; width: 100%; font-weight: 900; }
+
+#openSpotifyBtn { background: var(--spotify); color: #000; font-weight: 900; }
+#openLocalBtn { background: var(--purple); color: #fff; font-weight: 900; }
+
 button:disabled { opacity: 0.3; filter: grayscale(1); }
 
 .mode-btn { background: #0f172a; color: var(--muted); font-size: 11px; padding: 12px 6px; flex: 1; text-align: center; }
 .mode-btn.active { background: var(--blue); color: #fff; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
 
 .pill { display: inline-block; padding: 6px 14px; border-radius: 10px; font-weight: 800; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
-.lent { color: var(--green); border-color: var(--green); }
-.moyen { color: var(--orange); border-color: var(--orange); }
-.rapide { color: var(--red); border-color: var(--red); }
 .impact { background: var(--red); color: white; animation: pulse 0.5s infinite; }
 
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
@@ -88,15 +88,22 @@ canvas { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.4); border-radi
 }
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-#spotifyModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100000; padding: 20px; }
-.modal-content { background: #121212; width: 100%; max-width: 400px; padding: 15px; border-radius: 28px; border: 1px solid rgba(30, 215, 96, 0.3); }
-#closeModalBtn { background: #282828; margin-top: 15px; width: 100%; font-size: 12px; padding: 12px; }
+#spotifyModal, #localModal {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center;
+  z-index: 100000; padding: 20px;
+}
+.modal-content { background: #121212; width: 100%; max-width: 400px; padding: 20px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.1); }
 
 #pocketOverlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: #000; z-index: 99999; display: none;
   flex-direction: column; justify-content: center; align-items: center;
 }
+
+#currentSongTitle { color: var(--purple); font-weight: 800; text-align: center; margin: 15px 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-controls { display: flex; justify-content: center; gap: 20px; margin-top: 10px; }
+.circle-btn { width: 50px; height: 50px; border-radius: 50%; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; border: 1px solid var(--border); }
 </style>
 </head>
 <body>
@@ -105,7 +112,20 @@ canvas { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.4); border-radi
     <div class="modal-content">
         <div style="color:var(--spotify); font-weight:900; margin-bottom:15px; font-size:14px; text-transform:uppercase; letter-spacing:1px; text-align:center;">Lecteur Spotify</div>
         <iframe id="spotifyIframe" src="" width="100%" height="352" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px; background:#000;"></iframe>
-        <button id="closeModalBtn">RETOUR AU COACH</button>
+        <button id="closeModalBtn" onclick="document.getElementById('spotifyModal').style.display='none'" style="background:#282828; margin-top:15px; width:100%;">RETOUR AU COACH</button>
+    </div>
+</div>
+
+<div id="localModal">
+    <div class="modal-content">
+        <div style="color:var(--purple); font-weight:900; font-size:14px; text-transform:uppercase; text-align:center;">Musique Locale</div>
+        <div id="currentSongTitle">Aucun fichier sélectionné</div>
+        <div class="player-controls">
+            <div class="circle-btn" onclick="prevTrack()">⏮</div>
+            <div id="playPauseBtn" class="circle-btn" style="background: var(--purple);" onclick="togglePlay()">▶</div>
+            <div class="circle-btn" onclick="nextTrack()">⏭</div>
+        </div>
+        <button onclick="document.getElementById('localModal').style.display='none'" style="background:#282828; margin-top:25px; width:100%;">RETOUR AU COACH</button>
     </div>
 </div>
 
@@ -119,7 +139,19 @@ canvas { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.4); border-radi
 <p class="sub">Vitesse & Coaching Vocal</p>
 
 <section class="card">
-    <button id="openSpotifyBtn">🎵 OUVRIR LE LECTEUR</button>
+    <div class="row">
+        <button id="openSpotifyBtn">🎵 SPOTIFY</button>
+        <button id="openLocalBtn">📂 FICHIERS</button>
+    </div>
+    <input type="file" id="fileInput" multiple accept="audio/*" style="display: none;">
+</section>
+
+<section class="card">
+  <h3 style="font-size:14px; margin-top:0; color:var(--muted);">Volume du Coach</h3>
+  <div style="display: flex; align-items: center; gap: 15px;">
+    <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" style="flex: 1; accent-color: var(--blue);">
+    <span id="volumeValue" style="font-family: monospace; width: 45px; text-align: right; font-weight: 800;">80%</span>
+  </div>
 </section>
 
 <section class="card" style="position: relative;">
@@ -158,14 +190,6 @@ canvas { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.4); border-radi
 </section>
 
 <section class="card">
-  <h3 style="font-size:14px; margin-top:0; color:var(--muted);">Volume du Coach</h3>
-  <div style="display: flex; align-items: center; gap: 15px;">
-    <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" style="flex: 1; accent-color: var(--blue);">
-    <span id="volumeValue" style="font-family: monospace; width: 45px; text-align: right; font-weight: 800;">100%</span>
-  </div>
-</section>
-
-<section class="card">
 <h3 style="font-size:14px; margin-top:0; color:var(--muted);">Résumé Live</h3>
 <div class="grid">
 <div class="kpi"><div class="label">Durée</div><div class="value" id="summaryDuration">0.0s</div></div>
@@ -180,35 +204,69 @@ canvas { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.4); border-radi
 </div>
 
 <script>
-// --- INITIALISATION VOCALE ---
+// --- LOGIQUE MUSIQUE LOCALE ---
+let localPlaylist = [];
+let currentIndex = 0;
+const audioPlayer = new Audio();
+const fileInput = document.getElementById('fileInput');
+
+document.getElementById('openLocalBtn').onclick = () => {
+    if (localPlaylist.length === 0) fileInput.click();
+    else document.getElementById('localModal').style.display = 'flex';
+};
+
+fileInput.onchange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+        localPlaylist = files;
+        currentIndex = 0;
+        loadTrack(currentIndex);
+        document.getElementById('localModal').style.display = 'flex';
+    }
+};
+
+function loadTrack(index) {
+    const file = localPlaylist[index];
+    document.getElementById('currentSongTitle').textContent = file.name;
+    audioPlayer.src = URL.createObjectURL(file);
+    // COURBE DE VOLUME LOGARITHMIQUE POUR LA MUSIQUE
+    audioPlayer.volume = Math.pow(coachVolume, 2); 
+}
+
+function togglePlay() {
+    if (audioPlayer.paused) { audioPlayer.play(); document.getElementById('playPauseBtn').textContent = "II"; }
+    else { audioPlayer.pause(); document.getElementById('playPauseBtn').textContent = "▶"; }
+}
+
+function nextTrack() {
+    currentIndex = (currentIndex + 1) % localPlaylist.length;
+    loadTrack(currentIndex); audioPlayer.play(); document.getElementById('playPauseBtn').textContent = "II";
+}
+
+function prevTrack() {
+    currentIndex = (currentIndex - 1 + localPlaylist.length) % localPlaylist.length;
+    loadTrack(currentIndex); audioPlayer.play(); document.getElementById('playPauseBtn').textContent = "II";
+}
+audioPlayer.onended = nextTrack;
+
+// --- RECONNAISSANCE VOCALE ---
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition;
 const micIndicator = document.getElementById("micIndicator");
 
 if (SpeechRecognition) {
     recognition = new SpeechRecognition();
-    recognition.lang = 'fr-FR';
-    recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.lang = 'fr-FR'; recognition.continuous = true;
     recognition.onstart = () => { micIndicator.style.display = 'block'; };
     recognition.onend = () => { micIndicator.style.display = 'none'; if (vocalUnlocked && running) recognition.start(); };
     recognition.onresult = (event) => {
         const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
-        if (command.includes("libre")) { updateTargetMenu(null); speak("Mode libre."); }
-        else if (command.includes("lent") || command.includes("long")) { updateTargetMenu("lent"); speak("Mode lent."); }
-        else if (command.includes("moyen")) { updateTargetMenu("moyen"); speak("Mode moyen."); }
-        else if (command.includes("rapide")) { updateTargetMenu("rapide"); speak("Mode rapide."); }
+        if (command.includes("libre")) updateTargetMenu(null);
+        else if (command.includes("lent")) updateTargetMenu("lent");
+        else if (command.includes("moyen")) updateTargetMenu("moyen");
+        else if (command.includes("rapide")) updateTargetMenu("rapide");
     };
 }
-
-// --- GESTION DU MODE POCHE ---
-const pocketOverlay = document.getElementById("pocketOverlay");
-const exitPocketBtn = document.getElementById("exitPocketBtn");
-
-// Quand on quitte le mode poche, on arrête la session !
-exitPocketBtn.onclick = () => { 
-    stopSession(); 
-};
 
 const playlistLinks = {
     libre:  "https://open.spotify.com/embed/playlist/37i9dQZF1DXadO2fU7S90n",
@@ -221,88 +279,94 @@ const synth = window.speechSynthesis;
 let vocalUnlocked = false;
 let targetMode = null;
 let running = false;
-let coachVolume = 1.0;
+let coachVolume = 0.8; // Initialisé à 80%
 
-const btnLibre = document.getElementById("btnLibre");
-const btnLent = document.getElementById("btnLent");
-const btnMoyen = document.getElementById("btnMoyen");
-const btnRapide = document.getElementById("btnRapide");
-const targetModeText = document.getElementById("targetModeText");
-const openSpotifyBtn = document.getElementById("openSpotifyBtn");
-const spotifyModal = document.getElementById("spotifyModal");
-const spotifyIframe = document.getElementById("spotifyIframe");
-const closeModalBtn = document.getElementById("closeModalBtn");
-const volumeSlider = document.getElementById("volumeSlider");
-const volumeValue = document.getElementById("volumeValue");
+const volumeSlider = document.getElementById('volumeSlider');
+const volumeValue = document.getElementById('volumeValue');
 
 volumeSlider.oninput = () => {
-    coachVolume = volumeSlider.value;
+    coachVolume = parseFloat(volumeSlider.value);
     volumeValue.textContent = Math.round(coachVolume * 100) + "%";
+    // Applique le volume à la musique avec une courbe exponentielle pour être très bas à 10%
+    audioPlayer.volume = Math.pow(coachVolume, 2); 
 };
 
 function chargerMusique() {
     const key = targetMode || 'libre';
-    spotifyIframe.src = playlistLinks[key];
+    document.getElementById("spotifyIframe").src = playlistLinks[key];
 }
 
 function updateTargetMenu(m) {
     targetMode = m;
-    [btnLibre, btnLent, btnMoyen, btnRapide].forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
     if (m === null) { 
-        btnLibre.classList.add("active"); targetModeText.textContent = "Course libre"; 
+        document.getElementById("btnLibre").classList.add("active"); 
+        document.getElementById("targetModeText").textContent = "Course libre"; 
     } else {
-        const activeBtn = document.getElementById("btn" + m.charAt(0).toUpperCase() + m.slice(1));
-        if(activeBtn) activeBtn.classList.add("active");
-        targetModeText.textContent = "Objectif : " + m.charAt(0).toUpperCase() + m.slice(1);
+        document.getElementById("btn" + m.charAt(0).toUpperCase() + m.slice(1)).classList.add("active");
+        document.getElementById("targetModeText").textContent = "Objectif : " + m.charAt(0).toUpperCase() + m.slice(1);
     }
 }
 
-btnLibre.onclick = () => { updateTargetMenu(null); speak("Mode libre."); };
-btnLent.onclick = () => { updateTargetMenu("lent"); speak("Lent."); };
-btnMoyen.onclick = () => { updateTargetMenu("moyen"); speak("Moyen."); };
-btnRapide.onclick = () => { updateTargetMenu("rapide"); speak("Rapide."); };
-
-openSpotifyBtn.onclick = () => { chargerMusique(); spotifyModal.style.display = "flex"; };
-closeModalBtn.onclick = () => { spotifyModal.style.display = "none"; };
+document.getElementById("openSpotifyBtn").onclick = () => { chargerMusique(); document.getElementById("spotifyModal").style.display = "flex"; };
 
 function speak(t) {
     if (!vocalUnlocked) return;
     if (synth.speaking) synth.cancel();
     const u = new SpeechSynthesisUtterance(t);
-    u.lang = 'fr-FR'; u.rate = 1.1; u.volume = coachVolume;
+    u.lang = 'fr-FR'; u.rate = 1.1; 
+    u.volume = coachVolume; // La voix reste plus audible que la musique à bas volume
     synth.speak(u);
 }
 
 const permissionBtn = document.getElementById("permissionBtn");
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
-const statusText = document.getElementById("statusText");
-const modeBadge = document.getElementById("modeBadge");
-const impactBadge = document.getElementById("impactBadge");
-const speedValue = document.getElementById("speedValue");
-const cadenceValue = document.getElementById("cadenceValue");
-const stepCountValue = document.getElementById("stepCountValue");
-const impactCountValue = document.getElementById("impactCountValue");
+const pocketOverlay = document.getElementById("pocketOverlay");
 
-const summaryDuration = document.getElementById("summaryDuration");
-const summaryDistance = document.getElementById("summaryDistance");
-const summaryLent = document.getElementById("summaryLent");
-const summaryMoyen = document.getElementById("summaryMoyen");
-const summaryRapide = document.getElementById("summaryRapide");
-const summaryAvgSpeed = document.getElementById("summaryAvgSpeed");
-const summaryGrade = document.getElementById("summaryGrade");
+permissionBtn.onclick = async () => {
+    try {
+        if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+            const res = await DeviceMotionEvent.requestPermission();
+            if (res !== "granted") return;
+        }
+        if (!vocalUnlocked) { synth.speak(new SpeechSynthesisUtterance("")); vocalUnlocked = true; }
+        if (recognition) { try { recognition.start(); } catch(e){} }
+        document.getElementById("statusText").textContent = "Capteurs & Micro OK"; startBtn.disabled = false;
+    } catch (e) { alert("HTTPS requis."); }
+};
 
-const canvas = document.getElementById("graph");
-const ctx = canvas.getContext("2d");
+startBtn.onclick = () => {
+    running = true; sessionStart = Date.now(); lastSampleTimestamp = Date.now();
+    totalSteps = 0; totalDistance = 0; modeTimes = { lent: 0, moyen: 0, rapide: 0 };
+    speedSum = 0; speedCount = 0;
+    pocketOverlay.style.display = 'flex'; speak("C'est parti.");
+    window.addEventListener("devicemotion", handleMotion);
+    startBtn.disabled = true; stopBtn.disabled = false;
+};
 
-let dataWindow = [], graphValues = [], peakTimes = [], totalSteps = 0, lastStepTime = 0, lastImpactTime = 0;
-let mode = "-", sessionStart = null, lastSampleTimestamp = null, impactCount = 0;
+function stopSession() {
+    running = false; window.removeEventListener("devicemotion", handleMotion);
+    pocketOverlay.style.display = 'none'; audioPlayer.pause();
+    if(recognition) recognition.stop();
+    const dur = (Date.now() - sessionStart) / 1000;
+    if (targetMode && dur > 0) {
+        const pct = Math.round((modeTimes[targetMode] / dur) * 100);
+        let g = pct >= 80 ? "A" : (pct >= 70 ? "B" : (pct >= 60 ? "C" : "D"));
+        document.getElementById("summaryGrade").textContent = g + " (" + pct + "%)";
+        speak("Note finale " + g + ".");
+    } else { speak("Séance terminée."); }
+    document.getElementById("statusText").textContent = "Terminé"; stopBtn.disabled = true; startBtn.disabled = false;
+}
+
+document.getElementById("exitPocketBtn").onclick = stopSession;
+stopBtn.onclick = stopSession;
+
+// --- LOGIQUE MOUVEMENT ---
+let dataWindow = [], graphValues = [], peakTimes = [], lastStepTime = 0, lastImpactTime = 0, mode = "-";
+let speedSum = 0, speedCount = 0, totalDistance = 0, sessionStart = null, lastSampleTimestamp = null;
 let modeTimes = { lent: 0, moyen: 0, rapide: 0 };
-let totalDistance = 0, speedSum = 0, speedCount = 0, lastEncouragedMode = null;
-
 const THRESHOLD_LENT = 30.0, THRESHOLD_RAPIDE = 55.0, THRESHOLD_IMPACT = 85.0;
-
-function setModeBadge(nm) { modeBadge.textContent = nm; modeBadge.className = "pill " + nm; }
 
 function handleMotion(event) {
     if (!running) return;
@@ -318,120 +382,41 @@ function handleMotion(event) {
 
     const sorted = [...dataWindow.map(v => v.value)].sort((a,b)=>a-b);
     const p95 = sorted.length ? sorted[Math.floor(0.95 * (sorted.length - 1))] : 0;
-    
     const currentKmH = Math.max(0, (p95 / 5)).toFixed(1);
-    speedValue.textContent = currentKmH;
+    document.getElementById("speedValue").textContent = currentKmH;
 
     let nm = p95 < THRESHOLD_LENT ? "lent" : (p95 < THRESHOLD_RAPIDE ? "moyen" : "rapide");
-    if (nm !== mode) { mode = nm; setModeBadge(mode); }
+    if (nm !== mode) { mode = nm; document.getElementById("modeBadge").textContent = nm; document.getElementById("modeBadge").className = "pill " + nm; }
 
     if (dyn > 20.0 && now - lastStepTime > 250) { totalSteps++; lastStepTime = now; peakTimes.push(now); }
     if (dyn > THRESHOLD_IMPACT && now - lastImpactTime > 800) {
-        impactCount++; impactCountValue.textContent = impactCount;
-        impactBadge.textContent = "Impact !"; impactBadge.className = "pill impact";
+        document.getElementById("impactCountValue").textContent = parseInt(document.getElementById("impactCountValue").textContent || 0) + 1;
+        document.getElementById("impactBadge").textContent = "Impact !"; document.getElementById("impactBadge").className = "pill impact";
         speak("Impact."); lastImpactTime = now;
-        setTimeout(() => { if (running) { impactBadge.textContent = "Aucune"; impactBadge.className = "pill"; } }, 700);
+        setTimeout(() => { if (running) { document.getElementById("impactBadge").textContent = "Aucune"; document.getElementById("impactBadge").className = "pill"; } }, 700);
     }
     
     if (lastSampleTimestamp) {
         const dt = (now - lastSampleTimestamp) / 1000;
-        if (mode === "lent") modeTimes.lent += dt;
-        else if (mode === "moyen") modeTimes.moyen += dt;
-        else if (mode === "rapide") modeTimes.rapide += dt;
+        modeTimes[mode] += dt;
         totalDistance += (parseFloat(currentKmH) / 3600) * dt;
-        speedSum += parseFloat(currentKmH);
-        speedCount++;
+        speedSum += parseFloat(currentKmH); speedCount++;
     }
     lastSampleTimestamp = now;
 
-    stepCountValue.textContent = totalSteps;
-    const recent = peakTimes.filter(t => now - t <= 10000);
-    cadenceValue.textContent = recent.length < 2 ? 0 : Math.round(((recent.length-1)/((recent[recent.length-1]-recent[0])/1000))*60);
+    document.getElementById("stepCountValue").textContent = totalSteps;
+    document.getElementById("summaryDuration").textContent = ((now - sessionStart)/1000).toFixed(1) + "s";
+    document.getElementById("summaryDistance").textContent = totalDistance.toFixed(2);
+    document.getElementById("summaryLent").textContent = modeTimes.lent.toFixed(1) + "s";
+    document.getElementById("summaryMoyen").textContent = modeTimes.moyen.toFixed(1) + "s";
+    document.getElementById("summaryRapide").textContent = modeTimes.rapide.toFixed(1) + "s";
+    document.getElementById("summaryAvgSpeed").textContent = speedCount > 0 ? (speedSum / speedCount).toFixed(1) : "0.0";
 
-    const dur = (now - sessionStart) / 1000;
-    summaryDuration.textContent = dur.toFixed(1) + "s";
-    summaryDistance.textContent = totalDistance.toFixed(2);
-    summaryLent.textContent = modeTimes.lent.toFixed(1) + "s";
-    summaryMoyen.textContent = modeTimes.moyen.toFixed(1) + "s";
-    summaryRapide.textContent = modeTimes.rapide.toFixed(1) + "s";
-    summaryAvgSpeed.textContent = speedCount > 0 ? (speedSum / speedCount).toFixed(1) : "0.0";
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const maxY = 95;
+    const ctx = document.getElementById("graph").getContext("2d");
+    ctx.clearRect(0,0,700,180);
     function dl(v, c) {
-        const y = canvas.height - (v / maxY) * canvas.height;
+        const y = 180 - (v / 95) * 180;
         ctx.strokeStyle = c; ctx.setLineDash([5, 5]); ctx.beginPath();
-        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.moveTo(0, y); ctx.lineTo(700, y); ctx.stroke(); ctx.setLineDash([]);
     }
-    dl(THRESHOLD_LENT, "#10b981"); dl(THRESHOLD_RAPIDE, "#f59e0b"); dl(THRESHOLD_IMPACT, "#ef4444");
-
-    ctx.strokeStyle="#38bdf8"; ctx.lineWidth=2; ctx.beginPath();
-    graphValues.forEach((p,i)=>{
-        const x=(i/119)*canvas.width; const y=canvas.height-(p.value/maxY)*canvas.height;
-        if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    });
-    ctx.stroke();
-}
-
-setInterval(() => {
-    if (!running || !targetMode) return;
-    if (mode === targetMode) {
-        if (lastEncouragedMode !== mode) { speak("Continue."); lastEncouragedMode = mode; }
-    } else {
-        lastEncouragedMode = null;
-        if (targetMode === 'rapide' && mode !== 'rapide') speak("Accélère.");
-        else if (targetMode === 'lent' && mode !== 'lent') speak("Ralentis.");
-        else if (targetMode === 'moyen' && mode === 'lent') speak("Plus vite.");
-        else if (targetMode === 'moyen' && mode === 'rapide') speak("Ralentis.");
-    }
-}, 4000);
-
-permissionBtn.onclick = async () => {
-    try {
-        if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
-            const res = await DeviceMotionEvent.requestPermission();
-            if (res !== "granted") return;
-        }
-        if (!vocalUnlocked) { synth.speak(new SpeechSynthesisUtterance("")); vocalUnlocked = true; }
-        if (recognition) { try { recognition.start(); } catch(e){} }
-        
-        statusText.textContent = "Capteurs & Micro OK"; startBtn.disabled = false;
-    } catch (e) { alert("HTTPS requis."); }
-};
-
-function startSession() {
-    running = true; sessionStart = Date.now(); lastSampleTimestamp = Date.now();
-    totalSteps = 0; impactCount = 0; modeTimes = { lent: 0, moyen: 0, rapide: 0 };
-    totalDistance = 0; speedSum = 0; speedCount = 0;
-    
-    // --- Nouveauté : Activation AUTO du mode poche ---
-    pocketOverlay.style.display = 'flex'; 
-    
-    summaryGrade.textContent = "-";
-    speak("C'est parti. Mode poche activé.");
-    window.addEventListener("devicemotion", handleMotion);
-    statusText.textContent = "En cours"; startBtn.disabled = true; stopBtn.disabled = false;
-}
-
-function stopSession() {
-    running = false; window.removeEventListener("devicemotion", handleMotion);
-    
-    // Fermeture de l'overlay poche
-    pocketOverlay.style.display = 'none';
-    
-    if(recognition) recognition.stop();
-    const dur = (Date.now() - sessionStart) / 1000;
-    if (targetMode && dur > 0) {
-        const pct = Math.round((modeTimes[targetMode] / dur) * 100);
-        let g = pct >= 80 ? "A" : (pct >= 70 ? "B" : (pct >= 60 ? "C" : "D"));
-        summaryGrade.textContent = g + " (" + pct + "%)";
-        speak("Note finale " + g + ".");
-    } else { speak("Séance terminée."); }
-    statusText.textContent = "Terminé"; stopBtn.disabled = true; startBtn.disabled = false;
-}
-
-startBtn.onclick = startSession;
-stopBtn.onclick = stopSession;
-</script>
-</body>
-</html>
+    dl(THRESHOLD_LENT, "#10b981"); dl(THRESHOLD_RAPIDE, "#f59e0b"); d
